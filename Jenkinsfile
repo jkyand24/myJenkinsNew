@@ -16,18 +16,20 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh '. venv/bin/activate && pytest test_app.py'
+                sh """
+                    docker build -t test-image --target=test .
+                    docker run --rm test-image
+                """
             }
         }
 
-        stage('Deploy') {
+        stage('Build & Push') {
             steps {
-                script {
-                    def image = "kiyeon24/myapp:${env.BUILD_NUMBER}"
+                withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                     sh """
-                        docker build -t ${image} .
+                        docker build -t ${DOCKER_IMAGE} .
                         echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-                        docker push ${image}
+                        docker push ${DOCKER_IMAGE}
                     """
                 }
             }
